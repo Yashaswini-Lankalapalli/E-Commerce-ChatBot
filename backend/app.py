@@ -157,31 +157,198 @@ def process_chat_message(message):
 
 # Initialize database with sample products
 def init_db():
-    if products_collection.count_documents({}) == 0:
-        sample_products = [
-            {
-                'name': 'Smartphone X',
-                'description': 'Latest smartphone with advanced features',
-                'price': 999.99,
-                'category': 'Electronics',
-                'stock': 50
-            },
-            {
-                'name': 'Laptop Pro',
-                'description': 'High-performance laptop for professionals',
-                'price': 1499.99,
-                'category': 'Electronics',
-                'stock': 30
-            },
-            {
-                'name': 'Wireless Earbuds',
-                'description': 'Premium wireless earbuds with noise cancellation',
-                'price': 199.99,
-                'category': 'Electronics',
-                'stock': 100
-            }
-        ]
-        products_collection.insert_many(sample_products)
+    # Clear existing products
+    products_collection.delete_many({})
+    
+    sample_products = [
+        # Electronics
+        {
+            'name': 'Smartphone X',
+            'description': 'Latest smartphone with advanced features',
+            'price': 999.99,
+            'category': 'Electronics',
+            'stock': 50,
+            'image': 'https://via.placeholder.com/300x200?text=Smartphone+X'
+        },
+        {
+            'name': 'Laptop Pro',
+            'description': 'High-performance laptop for professionals',
+            'price': 1499.99,
+            'category': 'Electronics',
+            'stock': 30,
+            'image': 'https://via.placeholder.com/300x200?text=Laptop+Pro'
+        },
+        {
+            'name': 'Wireless Earbuds',
+            'description': 'Premium wireless earbuds with noise cancellation',
+            'price': 199.99,
+            'category': 'Electronics',
+            'stock': 100,
+            'image': 'https://via.placeholder.com/300x200?text=Wireless+Earbuds'
+        },
+        {
+            'name': 'Smart Watch',
+            'description': 'Fitness tracker and smartwatch with health monitoring',
+            'price': 299.99,
+            'category': 'Electronics',
+            'stock': 75,
+            'image': 'https://via.placeholder.com/300x200?text=Smart+Watch'
+        },
+        {
+            'name': '4K Monitor',
+            'description': 'Ultra-wide 4K display for professionals',
+            'price': 799.99,
+            'category': 'Electronics',
+            'stock': 25,
+            'image': 'https://via.placeholder.com/300x200?text=4K+Monitor'
+        },
+        # Clothing
+        {
+            'name': 'Designer T-Shirt',
+            'description': 'Premium cotton t-shirt with modern design',
+            'price': 49.99,
+            'category': 'Clothing',
+            'stock': 200,
+            'image': 'https://via.placeholder.com/300x200?text=Designer+T-Shirt'
+        },
+        {
+            'name': 'Denim Jacket',
+            'description': 'Classic denim jacket with modern fit',
+            'price': 89.99,
+            'category': 'Clothing',
+            'stock': 60,
+            'image': 'https://via.placeholder.com/300x200?text=Denim+Jacket'
+        },
+        {
+            'name': 'Running Shoes',
+            'description': 'Lightweight running shoes with advanced cushioning',
+            'price': 129.99,
+            'category': 'Clothing',
+            'stock': 80,
+            'image': 'https://via.placeholder.com/300x200?text=Running+Shoes'
+        },
+        # Home & Kitchen
+        {
+            'name': 'Smart Coffee Maker',
+            'description': 'WiFi-enabled coffee maker with app control',
+            'price': 149.99,
+            'category': 'Home & Kitchen',
+            'stock': 40,
+            'image': 'https://via.placeholder.com/300x200?text=Smart+Coffee+Maker'
+        },
+        {
+            'name': 'Air Purifier',
+            'description': 'HEPA air purifier for large rooms',
+            'price': 199.99,
+            'category': 'Home & Kitchen',
+            'stock': 35,
+            'image': 'https://via.placeholder.com/300x200?text=Air+Purifier'
+        },
+        # Books
+        {
+            'name': 'Best Seller Novel',
+            'description': 'Award-winning fiction novel',
+            'price': 19.99,
+            'category': 'Books',
+            'stock': 150,
+            'image': 'https://via.placeholder.com/300x200?text=Best+Seller+Novel'
+        },
+        {
+            'name': 'Cookbook Collection',
+            'description': 'Complete set of gourmet recipes',
+            'price': 49.99,
+            'category': 'Books',
+            'stock': 45,
+            'image': 'https://via.placeholder.com/300x200?text=Cookbook+Collection'
+        },
+        # Sports
+        {
+            'name': 'Yoga Mat',
+            'description': 'Premium non-slip yoga mat',
+            'price': 39.99,
+            'category': 'Sports',
+            'stock': 120,
+            'image': 'https://via.placeholder.com/300x200?text=Yoga+Mat'
+        },
+        {
+            'name': 'Dumbbell Set',
+            'description': 'Adjustable weight dumbbell set',
+            'price': 149.99,
+            'category': 'Sports',
+            'stock': 30,
+            'image': 'https://via.placeholder.com/300x200?text=Dumbbell+Set'
+        },
+        # Beauty
+        {
+            'name': 'Skincare Set',
+            'description': 'Complete skincare routine set',
+            'price': 79.99,
+            'category': 'Beauty',
+            'stock': 90,
+            'image': 'https://via.placeholder.com/300x200?text=Skincare+Set'
+        },
+        {
+            'name': 'Perfume Collection',
+            'description': 'Luxury fragrance collection',
+            'price': 199.99,
+            'category': 'Beauty',
+            'stock': 25,
+            'image': 'https://via.placeholder.com/300x200?text=Perfume+Collection'
+        },
+        # Toys
+        {
+            'name': 'Educational Robot',
+            'description': 'Interactive learning robot for kids',
+            'price': 89.99,
+            'category': 'Toys',
+            'stock': 55,
+            'image': 'https://via.placeholder.com/300x200?text=Educational+Robot'
+        },
+        {
+            'name': 'Building Blocks Set',
+            'description': 'Creative building blocks for all ages',
+            'price': 59.99,
+            'category': 'Toys',
+            'stock': 70,
+            'image': 'https://via.placeholder.com/300x200?text=Building+Blocks+Set'
+        },
+        # Office
+        {
+            'name': 'Ergonomic Chair',
+            'description': 'Comfortable office chair with lumbar support',
+            'price': 299.99,
+            'category': 'Office',
+            'stock': 20,
+            'image': 'https://via.placeholder.com/300x200?text=Ergonomic+Chair'
+        },
+        {
+            'name': 'Wireless Keyboard',
+            'description': 'Slim wireless keyboard with numeric pad',
+            'price': 69.99,
+            'category': 'Office',
+            'stock': 85,
+            'image': 'https://via.placeholder.com/300x200?text=Wireless+Keyboard'
+        },
+        # Garden
+        {
+            'name': 'Smart Garden Kit',
+            'description': 'Automated indoor garden system',
+            'price': 199.99,
+            'category': 'Garden',
+            'stock': 40,
+            'image': 'https://via.placeholder.com/300x200?text=Smart+Garden+Kit'
+        },
+        {
+            'name': 'Garden Tools Set',
+            'description': 'Complete set of gardening tools',
+            'price': 79.99,
+            'category': 'Garden',
+            'stock': 60,
+            'image': 'https://via.placeholder.com/300x200?text=Garden+Tools+Set'
+        }
+    ]
+    products_collection.insert_many(sample_products)
+    print("Database initialized with", len(sample_products), "products")
 
 if __name__ == '__main__':
     init_db()
