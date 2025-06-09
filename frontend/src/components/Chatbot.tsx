@@ -109,7 +109,7 @@ const Chatbot: React.FC = () => {
       <Box
         sx={{
           position: 'fixed',
-          bottom: 20,
+          bottom: 80,
           right: 20,
           width: 350,
           height: 500,
