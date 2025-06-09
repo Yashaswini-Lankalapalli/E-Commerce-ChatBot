@@ -7,8 +7,11 @@ import {
   IconButton,
   Typography,
   CircularProgress,
+  Fab,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import ChatIcon from '@mui/icons-material/Chat';
+import CloseIcon from '@mui/icons-material/Close';
 import { RootState } from '../store';
 import axios from 'axios';
 
@@ -22,6 +25,7 @@ const Chatbot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const token = useSelector((state: RootState) => state.auth.token);
 
@@ -85,105 +89,133 @@ const Chatbot: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        bottom: 20,
-        right: 20,
-        width: 350,
-        height: 500,
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 1000,
-      }}
-    >
-      <Paper
-        elevation={3}
+    <>
+      {/* Toggle Button */}
+      <Fab
+        color="primary"
+        aria-label="chat"
+        onClick={() => setIsOpen(!isOpen)}
         sx={{
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          position: 'fixed',
+          bottom: 20,
+          right: 20,
+          zIndex: 1001,
         }}
       >
-        {/* Chat Header */}
-        <Box
-          sx={{
-            p: 2,
-            bgcolor: 'primary.main',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <Typography variant="h6">E-commerce Assistant</Typography>
-        </Box>
+        {isOpen ? <CloseIcon /> : <ChatIcon />}
+      </Fab>
 
-        {/* Messages Area */}
-        <Box
+      {/* Chat Interface */}
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: 20,
+          right: 20,
+          width: 350,
+          height: 500,
+          display: isOpen ? 'flex' : 'none',
+          flexDirection: 'column',
+          zIndex: 1000,
+          transition: 'transform 0.3s ease-in-out',
+          transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
+        }}
+      >
+        <Paper
+          elevation={3}
           sx={{
-            flex: 1,
-            overflow: 'auto',
-            p: 2,
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
+            overflow: 'hidden',
           }}
         >
-          {messages.map((message, index) => (
-            <Box
-              key={index}
-              sx={{
-                alignSelf: message.sender === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '80%',
-              }}
-            >
-              <Paper
-                elevation={1}
-                sx={{
-                  p: 1.5,
-                  bgcolor: message.sender === 'user' ? 'primary.light' : 'grey.100',
-                  color: message.sender === 'user' ? 'white' : 'text.primary',
-                }}
-              >
-                <Typography variant="body1">{message.text}</Typography>
-                <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                  {message.timestamp.toLocaleTimeString()}
-                </Typography>
-              </Paper>
-            </Box>
-          ))}
-          {isLoading && (
-            <Box sx={{ alignSelf: 'flex-start' }}>
-              <CircularProgress size={20} />
-            </Box>
-          )}
-          <div ref={messagesEndRef} />
-        </Box>
-
-        {/* Input Area */}
-        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Type your message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              size="small"
-            />
+          {/* Chat Header */}
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: 'primary.main',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Typography variant="h6">E-commerce Assistant</Typography>
             <IconButton
-              color="primary"
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
+              size="small"
+              onClick={() => setIsOpen(false)}
+              sx={{ color: 'white' }}
             >
-              <SendIcon />
+              <CloseIcon />
             </IconButton>
           </Box>
-        </Box>
-      </Paper>
-    </Box>
+
+          {/* Messages Area */}
+          <Box
+            sx={{
+              flex: 1,
+              overflow: 'auto',
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}
+          >
+            {messages.map((message, index) => (
+              <Box
+                key={index}
+                sx={{
+                  alignSelf: message.sender === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '80%',
+                }}
+              >
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 1.5,
+                    bgcolor: message.sender === 'user' ? 'primary.light' : 'grey.100',
+                    color: message.sender === 'user' ? 'white' : 'text.primary',
+                  }}
+                >
+                  <Typography variant="body1">{message.text}</Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    {message.timestamp.toLocaleTimeString()}
+                  </Typography>
+                </Paper>
+              </Box>
+            ))}
+            {isLoading && (
+              <Box sx={{ alignSelf: 'flex-start' }}>
+                <CircularProgress size={20} />
+              </Box>
+            )}
+            <div ref={messagesEndRef} />
+          </Box>
+
+          {/* Input Area */}
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="Type your message..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                size="small"
+              />
+              <IconButton
+                color="primary"
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading}
+              >
+                <SendIcon />
+              </IconButton>
+            </Box>
+          </Box>
+        </Paper>
+      </Box>
+    </>
   );
 };
 
