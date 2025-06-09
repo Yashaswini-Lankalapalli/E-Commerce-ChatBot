@@ -8,10 +8,18 @@ import {
   Typography,
   CircularProgress,
   Fab,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Drawer,
+  Divider,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
+import HistoryIcon from '@mui/icons-material/History';
 import { RootState } from '../store';
 import axios from 'axios';
 
@@ -21,11 +29,22 @@ interface Message {
   timestamp: Date;
 }
 
+interface ChatSession {
+  _id: string;
+  title: string;
+  created_at: string;
+  last_updated: string;
+}
+
 const Chatbot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSession, setCurrentSession] = useState<string | null>(null);
+  const [isSessionsOpen, setIsSessionsOpen] = useState(false);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const token = useSelector((state: RootState) => state.auth.token);
 
@@ -36,6 +55,69 @@ const Chatbot: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (token) {
+      fetchSessions();
+    }
+  }, [token]);
+
+  const fetchSessions = async () => {
+    setIsLoadingSessions(true);
+    try {
+      const response = await axios.get('http://localhost:5000/api/chat/sessions', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setSessions(response.data);
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
+
+  const fetchSessionHistory = async (sessionId: string) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/chat/history?session_id=${sessionId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const formattedMessages = response.data.map((msg: any) => ({
+        text: msg.message,
+        sender: 'user',
+        timestamp: new Date(msg.timestamp),
+      })).concat(response.data.map((msg: any) => ({
+        text: msg.response,
+        sender: 'bot',
+        timestamp: new Date(msg.timestamp),
+      }))).sort((a: Message, b: Message) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      setMessages(formattedMessages);
+      setCurrentSession(sessionId);
+    } catch (error) {
+      console.error('Error fetching session history:', error);
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/chat/sessions/${sessionId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      await fetchSessions();
+      if (currentSession === sessionId) {
+        setMessages([]);
+        setCurrentSession(null);
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || !token) return;
@@ -53,7 +135,10 @@ const Chatbot: React.FC = () => {
     try {
       const response = await axios.post(
         'http://localhost:5000/api/chat',
-        { message: input },
+        { 
+          message: input,
+          session_id: currentSession
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -68,6 +153,8 @@ const Chatbot: React.FC = () => {
       };
 
       setMessages((prev) => [...prev, botMessage]);
+      setCurrentSession(response.data.session_id);
+      await fetchSessions();
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
@@ -86,6 +173,12 @@ const Chatbot: React.FC = () => {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const startNewChat = () => {
+    setMessages([]);
+    setCurrentSession(null);
+    setIsSessionsOpen(false);
   };
 
   return (
@@ -141,13 +234,22 @@ const Chatbot: React.FC = () => {
             }}
           >
             <Typography variant="h6">E-commerce Assistant</Typography>
-            <IconButton
-              size="small"
-              onClick={() => setIsOpen(false)}
-              sx={{ color: 'white' }}
-            >
-              <CloseIcon />
-            </IconButton>
+            <Box>
+              <IconButton
+                size="small"
+                onClick={() => setIsSessionsOpen(true)}
+                sx={{ color: 'white', mr: 1 }}
+              >
+                <HistoryIcon />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => setIsOpen(false)}
+                sx={{ color: 'white' }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
           </Box>
 
           {/* Messages Area */}
@@ -215,6 +317,93 @@ const Chatbot: React.FC = () => {
           </Box>
         </Paper>
       </Box>
+
+      {/* Sessions Drawer */}
+      <Drawer
+        anchor="right"
+        open={isSessionsOpen}
+        onClose={() => setIsSessionsOpen(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: 300,
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Chat History
+          </Typography>
+          <IconButton
+            color="primary"
+            onClick={startNewChat}
+            sx={{ mb: 2 }}
+          >
+            <ChatIcon /> New Chat
+          </IconButton>
+          <Divider />
+          {isLoadingSessions ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : sessions.length === 0 ? (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography color="text.secondary">
+                No chat history yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Start a new chat to begin your conversation
+              </Typography>
+            </Box>
+          ) : (
+            <List>
+              {sessions.map((session) => (
+                <ListItem
+                  key={session._id}
+                  button
+                  selected={currentSession === session._id}
+                  onClick={() => {
+                    fetchSessionHistory(session._id);
+                    setIsSessionsOpen(false);
+                  }}
+                  sx={{
+                    '&.Mui-selected': {
+                      backgroundColor: 'primary.light',
+                      '&:hover': {
+                        backgroundColor: 'primary.light',
+                      },
+                    },
+                  }}
+                >
+                  <ListItemText
+                    primary={session.title}
+                    secondary={new Date(session.last_updated).toLocaleString()}
+                    primaryTypographyProps={{
+                      sx: {
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      },
+                    }}
+                  />
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
+                      aria-label="delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSession(session._id);
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Box>
+      </Drawer>
     </>
   );
 };

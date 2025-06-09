@@ -21,6 +21,7 @@ db = client['ecommerce_db']
 users_collection = db['users']
 products_collection = db['products']
 chat_history_collection = db['chat_history']
+chat_sessions_collection = db['chat_sessions']
 
 # JWT configuration
 app.config['SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key')
@@ -106,12 +107,88 @@ def search_products():
         product['_id'] = str(product['_id'])
     return jsonify(products)
 
-# Chatbot routes
+# Chat session routes
+@app.route('/api/chat/sessions', methods=['GET'])
+@token_required
+def get_chat_sessions(current_user):
+    sessions = list(chat_sessions_collection.find(
+        {'user_id': current_user['_id']}
+    ).sort('last_updated', -1))
+    
+    for session in sessions:
+        session['_id'] = str(session['_id'])
+        session['last_updated'] = session['last_updated'].isoformat()
+    
+    return jsonify(sessions)
+
+@app.route('/api/chat/sessions', methods=['POST'])
+@token_required
+def create_chat_session(current_user):
+    session = {
+        'user_id': current_user['_id'],
+        'title': request.json.get('title', 'New Chat'),
+        'created_at': datetime.datetime.utcnow(),
+        'last_updated': datetime.datetime.utcnow()
+    }
+    
+    result = chat_sessions_collection.insert_one(session)
+    session['_id'] = str(result.inserted_id)
+    session['created_at'] = session['created_at'].isoformat()
+    session['last_updated'] = session['last_updated'].isoformat()
+    
+    return jsonify(session), 201
+
+@app.route('/api/chat/sessions/<session_id>', methods=['GET'])
+@token_required
+def get_chat_session(current_user, session_id):
+    session = chat_sessions_collection.find_one({
+        '_id': ObjectId(session_id),
+        'user_id': current_user['_id']
+    })
+    
+    if not session:
+        return jsonify({'message': 'Session not found'}), 404
+    
+    session['_id'] = str(session['_id'])
+    session['created_at'] = session['created_at'].isoformat()
+    session['last_updated'] = session['last_updated'].isoformat()
+    
+    return jsonify(session)
+
+@app.route('/api/chat/sessions/<session_id>', methods=['DELETE'])
+@token_required
+def delete_chat_session(current_user, session_id):
+    result = chat_sessions_collection.delete_one({
+        '_id': ObjectId(session_id),
+        'user_id': current_user['_id']
+    })
+    
+    if result.deleted_count == 0:
+        return jsonify({'message': 'Session not found'}), 404
+    
+    # Also delete associated chat history
+    chat_history_collection.delete_many({'session_id': ObjectId(session_id)})
+    
+    return jsonify({'message': 'Session deleted successfully'})
+
+# Modified chat routes
 @app.route('/api/chat', methods=['POST'])
 @token_required
 def chat(current_user):
     data = request.get_json()
     message = data.get('message', '')
+    session_id = data.get('session_id')
+    
+    if not session_id:
+        # Create new session if none provided
+        session = {
+            'user_id': current_user['_id'],
+            'title': message[:30] + '...' if len(message) > 30 else message,
+            'created_at': datetime.datetime.utcnow(),
+            'last_updated': datetime.datetime.utcnow()
+        }
+        session_result = chat_sessions_collection.insert_one(session)
+        session_id = session_result.inserted_id
     
     # Simple chatbot logic - can be enhanced with more sophisticated NLP
     response = process_chat_message(message)
@@ -119,23 +196,38 @@ def chat(current_user):
     # Store chat history
     chat_history = {
         'user_id': current_user['_id'],
+        'session_id': ObjectId(session_id),
         'message': message,
         'response': response,
         'timestamp': datetime.datetime.utcnow()
     }
     chat_history_collection.insert_one(chat_history)
     
-    return jsonify({'response': response})
+    # Update session last_updated
+    chat_sessions_collection.update_one(
+        {'_id': ObjectId(session_id)},
+        {'$set': {'last_updated': datetime.datetime.utcnow()}}
+    )
+    
+    return jsonify({
+        'response': response,
+        'session_id': str(session_id)
+    })
 
 @app.route('/api/chat/history', methods=['GET'])
 @token_required
 def get_chat_history(current_user):
-    history = list(chat_history_collection.find(
-        {'user_id': current_user['_id']}
-    ).sort('timestamp', -1).limit(50))
+    session_id = request.args.get('session_id')
+    query = {'user_id': current_user['_id']}
+    
+    if session_id:
+        query['session_id'] = ObjectId(session_id)
+    
+    history = list(chat_history_collection.find(query).sort('timestamp', -1).limit(50))
     
     for entry in history:
         entry['_id'] = str(entry['_id'])
+        entry['session_id'] = str(entry['session_id'])
         entry['timestamp'] = entry['timestamp'].isoformat()
     
     return jsonify(history)
